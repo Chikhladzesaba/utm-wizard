@@ -191,6 +191,21 @@
     .copied-msg { text-align: center; font-size: 14px; color: var(--good); min-height: 20px; }
     .copied-msg.bad { color: #c0262d; }
 
+    /* Welcome screen: before / after comparison */
+    .compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .panel { border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .panel.plain { border: 1px solid var(--line); background: #fafafb; }
+    .panel.tagged { border: 1.5px solid var(--accent); background: var(--badge); }
+    .panel-title { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .panel.tagged .panel-title { color: var(--accent); }
+    .bar-row { display: flex; flex-direction: column; gap: 5px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 14px; }
+    .bar { height: 8px; border-radius: 999px; background: var(--line); display: flex; }
+    .bar span { border-radius: 999px; background: var(--accent); }
+    .panel.plain .bar span { background: #c9cbd2; }
+    .panel-note { font-size: 13px; line-height: 1.4; color: #3d3f48; }
+    .strong-line { color: var(--ink); }
+
     /* Welcome screen: two stacked buttons */
     .actions.stack { flex-direction: column; }
     .actions.stack .btn { flex: none; width: 100%; height: 52px; }
@@ -263,21 +278,30 @@
     <!-- STEP 0: Welcome — explains UTMs to someone who has never heard of them -->
     <section class="screen active" id="step0">
       <div class="label">New here?</div>
-      <h1>Your boss said <em>“add UTMs”</em>. Here’s what that means.</h1>
-      <p>A UTM link is your normal link with a few labels added at the end. When someone clicks it, your analytics tool reads the labels and knows where the visitor came from.</p>
+      <h1>Which post <em>actually</em> worked?</h1>
+      <p>You promoted a sale on Instagram with an ad, a reel and a story. 100 people came.</p>
 
-      <div class="link-box">
-        <span class="k">Example</span>
-        <div class="url-out">example.com/sale?<span class="p-utm_source">utm_source=facebook</span>&amp;<span class="p-utm_medium">utm_medium=cpc</span>&amp;<span class="p-utm_campaign">utm_campaign=spring-sale</span></div>
+      <!-- Before / after: the same 100 visitors, seen with plain links vs links with UTMs (example numbers) -->
+      <div class="compare">
+        <div class="panel plain">
+          <span class="panel-title">Plain links</span>
+          <div class="bar-row"><div class="bar-label"><span>instagram</span><strong>100</strong></div><div class="bar"><span style="width: 100%"></span></div></div>
+          <span class="panel-note">Which post? No idea.</span>
+        </div>
+        <div class="panel tagged">
+          <span class="panel-title">Links with UTMs</span>
+          <div class="bar-row"><div class="bar-label"><span>reel</span><strong>58</strong></div><div class="bar"><span style="width: 58%"></span></div></div>
+          <div class="bar-row"><div class="bar-label"><span>paid ad</span><strong>30</strong></div><div class="bar"><span style="width: 30%"></span></div></div>
+          <div class="bar-row"><div class="bar-label"><span>story</span><strong>12</strong></div><div class="bar"><span style="width: 12%"></span></div></div>
+          <span class="panel-note">The free reel won.</span>
+        </div>
       </div>
 
-      <ul class="explain-list">
-        <li><span class="dot" style="background: var(--c-source)"></span><span><strong>Source</strong>: who sent the visitor. Facebook, a newsletter, a poster.</span></li>
-        <li><span class="dot" style="background: var(--c-medium)"></span><span><strong>Medium</strong>: what kind of traffic. A paid ad, a free post, an email.</span></li>
-        <li><span class="dot" style="background: var(--c-campaign)"></span><span><strong>Campaign</strong>: what you’re promoting. Spring sale, new course launch.</span></li>
-      </ul>
+      <p class="strong-line"><strong>UTMs are labels on a link</strong> that show the exact post, ad or email a visitor came from. The wizard writes them for you.</p>
 
-      <p>You don’t need to remember any rules. Answer 3 simple questions and the wizard builds a correct link for you. It takes about a minute.</p>
+      <div class="link-box">
+        <div class="url-out">yoursite.com?<span class="p-utm_source">utm_source=instagram</span>&amp;<span class="p-utm_medium">utm_medium=social</span>&amp;<span class="p-utm_campaign">utm_campaign=sale</span>&amp;<span class="p-utm_content">utm_content=reel</span></div>
+      </div>
 
       <div class="actions stack">
         <button class="btn primary" id="startBtn">Build a new link
@@ -303,7 +327,7 @@
         <summary>Why can’t Analytics tell this by itself?</summary>
         <div class="body">
           <p>Sometimes it can, but often it can’t. Apps like Instagram, WhatsApp or email programs often hide where a click came from, so analytics tools file those visitors under “Direct”, which means “no idea”.</p>
-          <p>UTM labels travel inside the link itself, so the information never gets lost.</p>
+          <p>UTM labels travel inside the link itself, so the information never gets lost. That’s why they matter most for emails, QR codes and messaging apps like WhatsApp, where analytics usually sees nothing at all.</p>
         </div>
       </details>
 
