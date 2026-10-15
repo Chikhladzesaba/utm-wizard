@@ -4,156 +4,753 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UTM Wizard</title>
+  <meta name="description" content="Build correct UTM links step by step, and learn how they work along the way.">
 
-  <!-- CSS: how the page LOOKS -->
+  <!-- Fonts: the same ones as chikhladzesaba.github.io -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+
+  <!-- ============ CSS: how the page LOOKS ============ -->
   <style>
+    /* Design tokens: colors and fonts in one place, reused everywhere */
+    :root {
+      --ink: #1a1b22;
+      --accent: #006aff;
+      --border: #c5dcf0;
+      --badge: #f7fbff;
+      --line: #e6e7eb;
+      --muted: #5f616b;
+      --good: #0b7a3e;
+      --c-source: #006aff;
+      --c-medium: #b4470a;
+      --c-campaign: #1a1b22;
+      --c-extra: #6b3fb8;
+      --sans: "Inter Tight", system-ui, sans-serif;
+      --serif: "Instrument Serif", Georgia, serif;
+      --mono: ui-monospace, Menlo, Consolas, monospace;
+    }
+
     * { box-sizing: border-box; }
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f5f5f7;
-      color: #1d1d1f;
       margin: 0;
-      padding: 24px 16px;
-    }
-    .card {
-      max-width: 560px;
-      margin: 0 auto;
       background: #ffffff;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      color: var(--ink);
+      font-family: var(--sans);
+      letter-spacing: -0.01em;
+      -webkit-font-smoothing: antialiased;
     }
-    h1 { margin: 0 0 4px; font-size: 28px; }
-    .subtitle { margin: 0 0 24px; color: #6e6e73; }
-    label { display: block; font-weight: 600; margin: 16px 0 6px; }
-    .optional { font-weight: 400; color: #6e6e73; }
+
+    /* The app container: full screen on phones, a card on bigger screens */
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 28px 20px 32px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    @media (min-width: 600px) {
+      body { background: var(--badge); }
+      .app {
+        margin: 40px auto;
+        min-height: 0;
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 32px 28px;
+      }
+    }
+
+    header { display: flex; justify-content: space-between; align-items: baseline; }
+    .brand { font-size: 20px; }
+    .brand em { font-family: var(--serif); font-size: 22px; }
+    .step-count { font-size: 14px; color: var(--muted); }
+
+    .progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .progress span { height: 4px; border-radius: 999px; background: var(--line); transition: background .3s; }
+    .progress span.on { background: var(--accent); }
+
+    /* Each step is a "screen". Only the one with .active is visible. */
+    .screen { display: none; flex-direction: column; gap: 20px; flex: 1; }
+    .screen.active { display: flex; }
+
+    .label { display: flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; font-size: 15px; letter-spacing: 0; }
+    .label::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+
+    h1 { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.1; }
+    h1 em { font-family: var(--serif); font-weight: 400; }
+    p { margin: 0; font-size: 16px; line-height: 1.45; color: #3d3f48; }
+
+    /* Form fields */
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field label { font-weight: 600; font-size: 15px; letter-spacing: 0; }
+    .field label span { font-weight: 400; color: var(--muted); }
     input {
+      height: 54px;
       width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      border: 1px solid #d2d2d7;
-      border-radius: 10px;
+      padding: 0 16px;
+      font: 16px var(--sans);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #ffffff;
     }
-    input:focus { outline: none; border-color: #0071e3; }
-    .result {
-      margin-top: 24px;
-      padding: 16px;
-      background: #f5f5f7;
-      border-radius: 10px;
-      font-family: monospace;
-      font-size: 14px;
-      word-break: break-all;
+    input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 106, 255, .12); }
+    .hint { font-size: 14px; color: var(--muted); line-height: 1.4; min-height: 20px; }
+    .hint.good { color: var(--good); }
+    .hint.bad { color: #c0262d; }
+    .code { font-family: var(--mono); font-size: 13px; background: var(--badge); color: var(--accent); border-radius: 6px; padding: 3px 7px; word-break: break-all; }
+
+    /* "Learn" boxes: native <details> opens and closes without any JavaScript */
+    details.learn { border: 1px solid var(--border); background: var(--badge); border-radius: 14px; padding: 0 16px; }
+    details.learn summary {
+      cursor: pointer; list-style: none; padding: 14px 0;
+      font-weight: 600; font-size: 15px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
     }
-    button {
-      margin-top: 12px;
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      font-weight: 600;
-      color: #ffffff;
-      background: #0071e3;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
+    details.learn summary::-webkit-details-marker { display: none; }
+    details.learn summary::after { content: "+"; font-size: 22px; font-weight: 400; color: var(--accent); line-height: 1; }
+    details.learn[open] summary::after { content: "–"; }
+    details.learn .body { padding: 0 0 16px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.45; color: #3d3f48; }
+    details.learn ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+
+    /* Channel cards */
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .card {
+      min-height: 64px; padding: 10px 14px;
+      border-radius: 16px; border: 1px solid var(--border); background: #ffffff;
+      color: var(--ink); font: 500 15px var(--sans); text-align: left; cursor: pointer;
+      display: flex; align-items: center; gap: 10px;
     }
-    button:disabled { background: #d2d2d7; cursor: not-allowed; }
+    .card svg { width: 20px; height: 20px; flex: none; }
+    .card:hover { border-color: var(--accent); }
+    .card.selected { border: 1.5px solid var(--accent); background: var(--badge); color: var(--accent); font-weight: 600; }
+    .card.other { border-style: dashed; color: #3d3f48; }
+
+    /* "Wizard filled this" box */
+    .filled { border: 1px solid var(--border); background: var(--badge); border-radius: 16px; padding: 14px 16px; display: none; flex-direction: column; gap: 10px; }
+    .filled.show { display: flex; }
+    .filled-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; color: var(--accent); }
+    .filled-head span { display: flex; align-items: center; gap: 6px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { font-family: var(--mono); font-size: 13px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+    .why { font-size: 14px; color: #3d3f48; line-height: 1.45; }
+    .text-btn { background: none; border: 0; padding: 0; color: var(--accent); font: 500 14px var(--sans); cursor: pointer; text-decoration: underline; }
+
+    .manual { display: none; flex-direction: column; gap: 14px; }
+    .manual.show { display: flex; }
+
+    /* Buttons */
+    .actions { display: flex; gap: 10px; margin-top: auto; padding-top: 8px; }
+    .btn {
+      height: 52px; border-radius: 999px; border: 0; cursor: pointer;
+      font: 500 16px var(--sans);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn svg { width: 16px; height: 16px; }
+    .btn.primary { flex: 1; background: var(--ink); color: #ffffff; }
+    .btn.primary:disabled { background: #c9cbd2; cursor: not-allowed; }
+    .btn.back { width: 52px; flex: none; background: #ffffff; border: 1px solid var(--border); color: var(--ink); }
+    .btn.copy { width: 100%; height: 56px; background: var(--accent); color: #ffffff; font-weight: 600; }
+    .btn.ghost { flex: 1; height: 48px; background: #ffffff; color: var(--ink); border: 1px solid var(--border); font-size: 15px; }
+
+    /* Example and result links, colored by part */
+    .link-box { border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+    .link-box .k { font-size: 13px; color: var(--muted); }
+    .url-out { font-family: var(--mono); font-size: 13px; line-height: 1.65; word-break: break-all; color: var(--muted); }
+    .p-utm_source { color: var(--c-source); font-weight: 600; }
+    .p-utm_medium { color: var(--c-medium); font-weight: 600; }
+    .p-utm_campaign { color: var(--c-campaign); font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+    .p-utm_term, .p-utm_content { color: var(--c-extra); font-weight: 600; }
+
+    /* Welcome screen list */
+    .explain-list { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+    .explain-list li { display: grid; grid-template-columns: 12px 1fr; gap: 10px; font-size: 15px; line-height: 1.45; color: #3d3f48; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; }
+
+    /* Result breakdown */
+    .parts { display: flex; flex-direction: column; }
+    .part { padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 12px 1fr; gap: 4px 10px; }
+    .part:last-child { border-bottom: 0; }
+    .part .name { font-weight: 600; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+    .part .val { font-family: var(--mono); font-size: 13px; font-weight: 400; word-break: break-all; text-align: right; }
+    .part .explain { grid-column: 2; font-size: 14px; color: var(--muted); line-height: 1.4; }
+
+    /* GA4 channel preview */
+    .channel { border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+    .channel.ok { background: #eefaf3; border: 1px solid #b9e4cb; }
+    .channel.warn { background: #fff6ec; border: 1px solid #f3cf9f; }
+    .channel .title { font-weight: 600; font-size: 15px; }
+    .channel .note { font-size: 14px; line-height: 1.45; color: #3d3f48; }
+    .channel .small { font-size: 12px; color: var(--muted); }
+
+    .copied-msg { text-align: center; font-size: 14px; color: var(--good); min-height: 20px; }
+    footer { text-align: center; font-size: 13px; color: var(--muted); }
+    footer a { color: var(--muted); }
   </style>
 </head>
 
 <body>
-  <!-- HTML: what is ON the page -->
-  <main class="card">
-    <h1>UTM Wizard</h1>
-    <p class="subtitle">Build clean, consistent UTM links in seconds.</p>
+  <!-- ============ HTML: what is ON the page ============ -->
+  <main class="app">
+    <header>
+      <div class="brand">UTM <em>Wizard</em></div>
+      <span class="step-count" id="stepCount"></span>
+    </header>
 
-    <label for="url">Website URL</label>
-    <input id="url" type="url" placeholder="https://example.com/page">
+    <div class="progress" id="progress" hidden>
+      <span></span><span></span><span></span><span></span>
+    </div>
 
-    <label for="source">Source</label>
-    <input id="source" placeholder="facebook">
+    <!-- STEP 0: Welcome — explains UTMs to someone who has never heard of them -->
+    <section class="screen active" id="step0">
+      <div class="label">New here?</div>
+      <h1>Your boss said <em>“add UTMs”</em>. Here’s what that means.</h1>
+      <p>A UTM link is your normal link with a few labels added at the end. When someone clicks it, Google Analytics reads the labels and knows exactly where that visitor came from.</p>
 
-    <label for="medium">Medium</label>
-    <input id="medium" placeholder="cpc">
+      <div class="link-box">
+        <span class="k">Example</span>
+        <div class="url-out">example.com/sale?<span class="p-utm_source">utm_source=facebook</span>&amp;<span class="p-utm_medium">utm_medium=cpc</span>&amp;<span class="p-utm_campaign">utm_campaign=spring-sale</span></div>
+      </div>
 
-    <label for="campaign">Campaign</label>
-    <input id="campaign" placeholder="spring-sale">
+      <ul class="explain-list">
+        <li><span class="dot" style="background: var(--c-source)"></span><span><strong>Source</strong>: who sent the visitor. Facebook, a newsletter, a poster.</span></li>
+        <li><span class="dot" style="background: var(--c-medium)"></span><span><strong>Medium</strong>: what kind of traffic. A paid ad, a free post, an email.</span></li>
+        <li><span class="dot" style="background: var(--c-campaign)"></span><span><strong>Campaign</strong>: what you’re promoting. Spring sale, new course launch.</span></li>
+      </ul>
 
-    <label for="term">Term <span class="optional">(optional)</span></label>
-    <input id="term" placeholder="running-shoes">
+      <p>You don’t need to remember any rules. Answer 3 simple questions and the wizard builds a correct link for you. It takes about a minute.</p>
 
-    <label for="content">Content <span class="optional">(optional)</span></label>
-    <input id="content" placeholder="blue-banner">
+      <div class="actions">
+        <button class="btn primary" id="startBtn">Let’s build a link
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </section>
 
-    <div id="result" class="result">Your link will appear here.</div>
-    <button id="copyBtn" disabled>Copy link</button>
+    <!-- STEP 1: Website URL -->
+    <section class="screen" id="step1">
+      <div class="label">Destination</div>
+      <h1>Where should people land?</h1>
+      <p>Paste the page you’re sending people to. This is the normal link you would share without any tracking.</p>
+
+      <div class="field">
+        <label for="url">Website URL</label>
+        <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="example.com/page">
+        <div class="hint" id="urlHint"></div>
+      </div>
+
+      <details class="learn">
+        <summary>Why can’t Analytics tell this by itself?</summary>
+        <div class="body">
+          <p>Sometimes it can, but often it can’t. Apps like Instagram, WhatsApp or email programs often hide where a click came from, so Google Analytics files those visitors under “Direct”, which means “no idea”.</p>
+          <p>UTM labels travel inside the link itself, so the information never gets lost.</p>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button class="btn back" data-go="0" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="btn primary" id="next1" disabled>Continue
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 2: Channel — plain-language cards fill in source + medium -->
+    <section class="screen" id="step2">
+      <div class="label">Channel</div>
+      <h1>Where will people click this link?</h1>
+
+      <div class="cards" id="cards"></div>
+
+      <div class="filled" id="filled">
+        <div class="filled-head">
+          <span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>
+            Wizard filled this for you
+          </span>
+          <button class="text-btn" id="editManual">Edit</button>
+        </div>
+        <div class="chips">
+          <span class="chip">source = <strong id="chipSource"></strong></span>
+          <span class="chip">medium = <strong id="chipMedium"></strong></span>
+        </div>
+        <div class="why" id="why"></div>
+      </div>
+
+      <div class="manual" id="manual">
+        <div class="field">
+          <label for="source">Source <span>· who sends the visitor</span></label>
+          <input id="source" type="text" autocomplete="off" placeholder="e.g. facebook, partner-blog">
+          <div class="hint" id="sourceHint"></div>
+        </div>
+        <div class="field">
+          <label for="medium">Medium <span>· what kind of traffic</span></label>
+          <input id="medium" type="text" autocomplete="off" placeholder="e.g. cpc, social, email, referral">
+          <div class="hint" id="mediumHint"></div>
+        </div>
+      </div>
+
+      <details class="learn">
+        <summary>Why not just write “facebook” everywhere?</summary>
+        <div class="body">
+          <p>Source says <em>who</em> sent the visitor. Medium says <em>how</em>. Google Analytics combines the two to decide which “channel” the visit belongs to, like Paid Social, Organic Social or Email.</p>
+          <p>Analytics matches the words exactly, so <span class="code">cpc</span> and <span class="code">paid</span> can land in different places. That’s why the wizard picks the words for you.</p>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button class="btn back" data-go="1" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="btn primary" id="next2" disabled>Continue
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 3: Campaign (+ optional term and content) -->
+    <section class="screen" id="step3">
+      <div class="label">Campaign</div>
+      <h1>What are you promoting?</h1>
+      <p>Write it however you like. The wizard turns it into a clean, report-friendly name.</p>
+
+      <div class="field">
+        <label for="campaign">Campaign name</label>
+        <input id="campaign" type="text" autocomplete="off" placeholder="e.g. Spring Sale 2026">
+        <div class="hint" id="campaignHint"></div>
+      </div>
+
+      <details class="learn">
+        <summary>Tips for good campaign names</summary>
+        <div class="body">
+          <ul>
+            <li><strong>Use the same name on every channel</strong>, so Facebook, email and posters all add up into one campaign in your reports.</li>
+            <li><strong>Add a date</strong> when the campaign repeats, for example <span class="code">black-friday-2026</span>.</li>
+            <li>Don’t worry about capitals, spaces or Georgian letters. The wizard converts them to lowercase Latin letters with hyphens.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="learn">
+        <summary>Add more detail (optional)</summary>
+        <div class="body">
+          <div class="field">
+            <label for="content">Content <span>· which version</span></label>
+            <input id="content" type="text" autocomplete="off" placeholder="e.g. blue-banner, video-ad">
+            <div class="hint">Use it to tell versions apart, for example two ad designs in an A/B test.</div>
+          </div>
+          <div class="field">
+            <label for="term">Term <span>· keyword</span></label>
+            <input id="term" type="text" autocomplete="off" placeholder="e.g. running-shoes">
+            <div class="hint">Mostly used for paid search keywords. Skip it if you’re not sure.</div>
+          </div>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button class="btn back" data-go="2" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="btn primary" id="next3" disabled>Build my link
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 4: Result -->
+    <section class="screen" id="step4">
+      <div class="label">Your link</div>
+      <h1>Ready to <em>track</em>.</h1>
+
+      <div class="link-box">
+        <div class="url-out" id="resultUrl"></div>
+      </div>
+
+      <div class="channel" id="channelBox">
+        <div class="title" id="channelTitle"></div>
+        <div class="note" id="channelNote"></div>
+        <div class="small">Prediction based on Google Analytics 4’s default channel rules (simplified).</div>
+      </div>
+
+      <div class="parts" id="parts"></div>
+
+      <div class="actions" style="flex-direction: column">
+        <button class="btn copy" id="copyBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          Copy link
+        </button>
+        <div class="copied-msg" id="copiedMsg" aria-live="polite"></div>
+        <div style="display: flex; gap: 10px">
+          <button class="btn ghost" data-go="1">Edit answers</button>
+          <button class="btn ghost" id="newLink">New link</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>Made by <a href="https://chikhladzesaba.github.io/">Saba Chikhladze</a></footer>
   </main>
 
-  <!-- JavaScript: what the page DOES -->
+  <!-- ============ JavaScript: what the page DOES ============ -->
   <script>
-    // 1. Grab the parts of the page we need
-    const result = document.getElementById("result");
-    const copyBtn = document.getElementById("copyBtn");
-    const fieldIds = ["url", "source", "medium", "campaign", "term", "content"];
+    // ---------------------------------------------------------------
+    // PART 1: THE WIZARD'S "BRAIN" — data and rules (no page needed)
+    // ---------------------------------------------------------------
 
-    // 2. Clean a value: remove extra spaces, make lowercase, spaces -> hyphens
+    // The mapping table: plain-language answer → correct UTM values.
+    // To add a new channel, add one line here. The card appears automatically.
+    const CHANNELS = [
+      { id: "fb-ad",      label: "Facebook ad",          source: "facebook",   medium: "cpc",
+        why: "You pay for this, so the medium is “cpc” (cost per click). Analytics will count it as Paid Social." },
+      { id: "fb-post",    label: "Facebook post",        source: "facebook",   medium: "social",
+        why: "A free post, so the medium is “social”. Keeping paid and free apart lets you compare them in your reports." },
+      { id: "ig-ad",      label: "Instagram ad",         source: "instagram",  medium: "cpc",
+        why: "A paid ad, so the medium is “cpc”. Analytics will count it as Paid Social." },
+      { id: "ig-post",    label: "Instagram post / story", source: "instagram", medium: "social",
+        why: "A free post or story, so the medium is “social”. Tip: put the link in your bio or a story link sticker." },
+      { id: "li-post",    label: "LinkedIn post",        source: "linkedin",   medium: "social",
+        why: "A free post, so the medium is “social”. Analytics will count it as Organic Social." },
+      { id: "newsletter", label: "Newsletter / email",   source: "newsletter", medium: "email",
+        why: "Every email uses the medium “email”, the exact word Analytics looks for. The source says which newsletter it was." },
+      { id: "google-ads", label: "Google Ads",           source: "google",     medium: "cpc",
+        why: "Paid search ads use “cpc”. Note: if auto-tagging is switched on in Google Ads, Analytics may use that data instead, so ask whoever runs your ads." },
+      { id: "qr",         label: "QR code on a poster",  source: "poster",     medium: "qr",
+        why: "Analytics has no built-in channel for offline traffic, so this will show as “Unassigned”. That’s fine: you can still find it by filtering for source “poster”." },
+      { id: "other",      label: "Something else",       source: "",           medium: "",
+        why: "" }
+    ];
+
+    // Simple line icons for each card (SVG drawing instructions)
+    const ICONS = {
+      "fb-ad":      '<path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1Z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/>',
+      "fb-post":    '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/>',
+      "ig-ad":      '<path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1Z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/>',
+      "ig-post":    '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',
+      "li-post":    '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
+      "newsletter": '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+      "google-ads": '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+      "qr":         '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M20 20h-3"/>',
+      "other":      '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'
+    };
+
+    // Georgian → Latin letters (Georgian national transliteration system)
+    const GEORGIAN = {
+      "ა":"a","ბ":"b","გ":"g","დ":"d","ე":"e","ვ":"v","ზ":"z","თ":"t","ი":"i","კ":"k",
+      "ლ":"l","მ":"m","ნ":"n","ო":"o","პ":"p","ჟ":"zh","რ":"r","ს":"s","ტ":"t","უ":"u",
+      "ფ":"p","ქ":"k","ღ":"gh","ყ":"q","შ":"sh","ჩ":"ch","ც":"ts","ძ":"dz","წ":"ts","ჭ":"ch",
+      "ხ":"kh","ჯ":"j","ჰ":"h"
+    };
+
+    // Clean any text into a report-friendly value:
+    // "  Spring Sale!!! 2026 " → "spring-sale-2026",  "შავი პარასკევი" → "shavi-paraskevi"
     function clean(text) {
-      return text.trim().toLowerCase().replace(/\s+/g, "-");
+      return text
+        .trim()
+        .toLowerCase()
+        .split("").map(function (ch) { return GEORGIAN[ch] || ch; }).join("") // Georgian → Latin
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")                      // é → e, ü → u
+        .replace(/[^a-z0-9]+/g, "-")                                           // anything else → hyphen
+        .replace(/^-+|-+$/g, "");                                              // no hyphens at the ends
     }
 
-    // 3. Read the form and build the link
-    function buildLink() {
-      let url = document.getElementById("url").value.trim();
-      const source = clean(document.getElementById("source").value);
-      const medium = clean(document.getElementById("medium").value);
-      const campaign = clean(document.getElementById("campaign").value);
-      const term = clean(document.getElementById("term").value);
-      const content = clean(document.getElementById("content").value);
+    // Lists Google Analytics uses to recognise social networks and search engines (shortened)
+    const SOCIAL_SOURCES = ["facebook", "fb", "instagram", "ig", "linkedin", "lnkd-in", "twitter", "x", "t-co",
+                            "tiktok", "pinterest", "reddit", "threads", "snapchat", "youtube", "whatsapp", "telegram", "vk"];
+    const SEARCH_SOURCES = ["google", "bing", "yahoo", "duckduckgo", "yandex", "baidu", "ecosia"];
 
-      // Required fields missing? Show a hint and stop here.
-      if (!url || !source || !medium || !campaign) {
-        result.textContent = "Fill in URL, source, medium and campaign.";
-        copyBtn.disabled = true;
-        return;
+    // Predict which GA4 channel a source + medium will land in.
+    // Simplified version of GA4's default channel rules: the first rule that matches wins.
+    function predictChannel(source, medium) {
+      const isSocial = SOCIAL_SOURCES.includes(source);
+      const isSearch = SEARCH_SOURCES.includes(source);
+      const isPaid = /^(.*cp.*|ppc|retargeting|paid.*)$/.test(medium);
+
+      if (/^(email|e-mail|e_mail)$/.test(medium) || source === "email") {
+        return { ok: true, name: "Email", note: "It will be grouped with all your other email traffic." };
       }
-
-      // Add https:// if the person forgot it
-      if (!/^https?:\/\//i.test(url)) {
-        url = "https://" + url;
+      if (isPaid && isSocial) {
+        return { ok: true, name: "Paid Social", note: "It will sit next to your other paid social ads, separate from free posts." };
       }
+      if (isPaid && isSearch) {
+        return { ok: true, name: "Paid Search", note: "It will be grouped with your paid search ads." };
+      }
+      if (/^(display|banner|expandable|interstitial|cpm)$/.test(medium)) {
+        return { ok: true, name: "Display", note: "It will be grouped with banner and display ads." };
+      }
+      if (isPaid) {
+        return { ok: true, name: "Paid Other", note: "Analytics knows it’s paid, but doesn’t recognise the source as a social network or search engine." };
+      }
+      if (isSocial || /^(social|social-network|social-media|sm)$/.test(medium)) {
+        return { ok: true, name: "Organic Social", note: "It will be grouped with your free social media posts." };
+      }
+      if (medium === "organic" && isSearch) {
+        return { ok: true, name: "Organic Search", note: "It will be grouped with free search traffic." };
+      }
+      if (medium === "referral") {
+        return { ok: true, name: "Referral", note: "It will be grouped with visits from other websites." };
+      }
+      if (medium === "affiliate") {
+        return { ok: true, name: "Affiliates", note: "It will be grouped with affiliate partner traffic." };
+      }
+      return {
+        ok: false,
+        name: "Unassigned",
+        note: "Analytics doesn’t recognise medium “" + medium + "”, so this traffic won’t appear under a channel. You can still find it by filtering for source “" + source + "”."
+      };
+    }
 
-      // Check that the URL is valid
-      let link;
+    // Plain-language explanations for the result breakdown
+    const PART_INFO = {
+      utm_source:   { name: "Source",   color: "var(--c-source)",   explain: "Who sent the visitor." },
+      utm_medium:   { name: "Medium",   color: "var(--c-medium)",   explain: "What kind of traffic it is." },
+      utm_campaign: { name: "Campaign", color: "var(--c-campaign)", explain: "What you’re promoting. Reuse this exact name on other channels." },
+      utm_content:  { name: "Content",  color: "var(--c-extra)",    explain: "Which version of the ad or post." },
+      utm_term:     { name: "Term",     color: "var(--c-extra)",    explain: "The keyword." }
+    };
+
+    // ---------------------------------------------------------------
+    // PART 2: THE PAGE — connect the brain to buttons and inputs
+    // ---------------------------------------------------------------
+
+    // The current answers live in one place, like a row in a spreadsheet
+    const answers = { url: "", channel: null, source: "", medium: "", campaign: "", content: "", term: "" };
+    let currentStep = 0;
+
+    // A tiny helper so we don't type document.getElementById every time
+    function $(id) { return document.getElementById(id); }
+
+    // Show one step and hide the others
+    function goTo(step) {
+      currentStep = step;
+      for (let i = 0; i <= 4; i++) {
+        $("step" + i).classList.toggle("active", i === step);
+      }
+      $("progress").hidden = step === 0;
+      $("progress").querySelectorAll("span").forEach(function (bar, i) {
+        bar.classList.toggle("on", i < step);
+      });
+      $("stepCount").textContent = step === 0 ? "" : step === 4 ? "Done" : "Step " + step + " of 4";
+      if (step === 4) showResult();
+      window.scrollTo(0, 0);
+    }
+
+    // Every button with data-go="2" jumps to step 2, and so on
+    document.querySelectorAll("[data-go]").forEach(function (btn) {
+      btn.addEventListener("click", function () { goTo(Number(btn.dataset.go)); });
+    });
+    $("startBtn").addEventListener("click", function () { goTo(1); $("url").focus(); });
+
+    // ---- Step 1: URL ----
+    // Returns a valid URL object, or null if the text isn't a usable web address
+    function parseUrl(text) {
+      text = text.trim();
+      if (!text) return null;
+      if (!/^https?:\/\//i.test(text)) text = "https://" + text;
       try {
-        link = new URL(url);
+        const url = new URL(text);
+        return url.hostname.includes(".") ? url : null;
       } catch (error) {
-        result.textContent = "That URL doesn't look right. Check it for typos.";
-        copyBtn.disabled = true;
-        return;
+        return null;
       }
-
-      // Add the UTM parameters
-      link.searchParams.set("utm_source", source);
-      link.searchParams.set("utm_medium", medium);
-      link.searchParams.set("utm_campaign", campaign);
-      if (term) link.searchParams.set("utm_term", term);
-      if (content) link.searchParams.set("utm_content", content);
-
-      result.textContent = link.toString();
-      copyBtn.disabled = false;
     }
 
-    // 4. Rebuild the link every time someone types in any field
-    fieldIds.forEach(function (id) {
-      document.getElementById(id).addEventListener("input", buildLink);
+    $("url").addEventListener("input", function () {
+      const raw = $("url").value.trim();
+      const url = parseUrl(raw);
+      answers.url = url ? url.toString() : "";
+      $("next1").disabled = !url;
+
+      const hint = $("urlHint");
+      if (!raw) {
+        hint.textContent = ""; hint.className = "hint";
+      } else if (!url) {
+        hint.textContent = "This doesn’t look like a web address yet. Check for typos."; hint.className = "hint bad";
+      } else if (!/^https?:\/\//i.test(raw)) {
+        hint.textContent = "Looks good. The wizard added https:// for you."; hint.className = "hint good";
+      } else {
+        hint.textContent = "Looks good."; hint.className = "hint good";
+      }
+    });
+    $("url").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !$("next1").disabled) goTo(2);
+    });
+    $("next1").addEventListener("click", function () { goTo(2); });
+
+    // ---- Step 2: Channel cards ----
+    // Build one button per channel from the CHANNELS list
+    CHANNELS.forEach(function (ch) {
+      const btn = document.createElement("button");
+      btn.className = "card" + (ch.id === "other" ? " other" : "");
+      btn.dataset.id = ch.id;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[ch.id] + '</svg>';
+      btn.appendChild(document.createTextNode(ch.label));
+      btn.addEventListener("click", function () { pickChannel(ch); });
+      $("cards").appendChild(btn);
     });
 
-    // 5. Copy the link when the button is clicked
-    copyBtn.addEventListener("click", function () {
-      navigator.clipboard.writeText(result.textContent).then(function () {
-        copyBtn.textContent = "Copied!";
-        setTimeout(function () { copyBtn.textContent = "Copy link"; }, 1500);
+    function pickChannel(ch) {
+      answers.channel = ch.id;
+      document.querySelectorAll(".card").forEach(function (card) {
+        card.classList.toggle("selected", card.dataset.id === ch.id);
+      });
+
+      if (ch.id === "other") {
+        // No preset: the person types source and medium themselves
+        $("filled").classList.remove("show");
+        $("manual").classList.add("show");
+        $("source").value = "";
+        $("medium").value = "";
+        updateManual();
+        $("source").focus();
+      } else {
+        answers.source = ch.source;
+        answers.medium = ch.medium;
+        $("source").value = ch.source;
+        $("medium").value = ch.medium;
+        $("chipSource").textContent = ch.source;
+        $("chipMedium").textContent = ch.medium;
+        $("why").textContent = ch.why;
+        $("filled").classList.add("show");
+        $("manual").classList.remove("show");
+        $("next2").disabled = false;
+      }
+    }
+
+    // "Edit" lets people change what the wizard filled in
+    $("editManual").addEventListener("click", function () {
+      $("filled").classList.remove("show");
+      $("manual").classList.add("show");
+      updateManual();
+    });
+
+    function updateManual() {
+      answers.source = clean($("source").value);
+      answers.medium = clean($("medium").value);
+      showSaved($("source"), $("sourceHint"), answers.source);
+      showSaved($("medium"), $("mediumHint"), answers.medium);
+      $("next2").disabled = !(answers.source && answers.medium);
+    }
+    $("source").addEventListener("input", updateManual);
+    $("medium").addEventListener("input", updateManual);
+    $("next2").addEventListener("click", function () { goTo(3); });
+
+    // Under an input, show what the cleaned value will look like
+    function showSaved(input, hint, cleaned) {
+      hint.className = "hint";
+      hint.textContent = "";
+      if (!input.value.trim()) return;
+      if (!cleaned) {
+        hint.textContent = "Please use letters or numbers.";
+        hint.className = "hint bad";
+        return;
+      }
+      hint.append("Saved as ");
+      const code = document.createElement("span");
+      code.className = "code";
+      code.textContent = cleaned;
+      hint.append(code);
+    }
+
+    // ---- Step 3: Campaign ----
+    function updateCampaign() {
+      answers.campaign = clean($("campaign").value);
+      answers.content = clean($("content").value);
+      answers.term = clean($("term").value);
+      showSaved($("campaign"), $("campaignHint"), answers.campaign);
+      $("next3").disabled = !answers.campaign;
+    }
+    ["campaign", "content", "term"].forEach(function (id) {
+      $(id).addEventListener("input", updateCampaign);
+    });
+    $("campaign").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !$("next3").disabled) goTo(4);
+    });
+    $("next3").addEventListener("click", function () { goTo(4); });
+
+    // ---- Step 4: Result ----
+    function buildLink() {
+      const link = new URL(answers.url);
+      link.searchParams.set("utm_source", answers.source);
+      link.searchParams.set("utm_medium", answers.medium);
+      link.searchParams.set("utm_campaign", answers.campaign);
+      if (answers.content) link.searchParams.set("utm_content", answers.content); else link.searchParams.delete("utm_content");
+      if (answers.term) link.searchParams.set("utm_term", answers.term); else link.searchParams.delete("utm_term");
+      return link;
+    }
+
+    function showResult() {
+      const link = buildLink();
+
+      // 1. The link, with each UTM part in its own color
+      const out = $("resultUrl");
+      out.textContent = link.origin + link.pathname;
+      let first = true;
+      link.searchParams.forEach(function (value, key) {
+        out.append(first ? "?" : "&");
+        first = false;
+        const span = document.createElement("span");
+        span.className = "p-" + key;
+        span.textContent = new URLSearchParams([[key, value]]).toString();
+        out.append(span);
+      });
+      out.append(link.hash);
+
+      // 2. The GA4 channel preview
+      const channel = predictChannel(answers.source, answers.medium);
+      $("channelBox").className = "channel " + (channel.ok ? "ok" : "warn");
+      $("channelTitle").textContent = (channel.ok ? "✓ Will appear in Google Analytics as " : "⚠ Will appear in Google Analytics as ") + channel.name;
+      $("channelNote").textContent = channel.note;
+
+      // 3. The breakdown: each part explained in plain words
+      const parts = $("parts");
+      parts.innerHTML = "";
+      ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].forEach(function (key) {
+        const value = link.searchParams.get(key);
+        if (!value) return;
+        const info = PART_INFO[key];
+        const row = document.createElement("div");
+        row.className = "part";
+        row.innerHTML = '<span class="dot" style="background:' + info.color + '"></span>' +
+                        '<div class="name"><span></span><span class="val"></span></div>' +
+                        '<div class="explain"></div>';
+        row.querySelector(".name span").textContent = info.name;
+        row.querySelector(".val").textContent = value;
+        row.querySelector(".explain").textContent = info.explain;
+        parts.appendChild(row);
+      });
+
+      $("copiedMsg").textContent = "";
+    }
+
+    // Copy to clipboard
+    $("copyBtn").addEventListener("click", function () {
+      const text = buildLink().toString();
+      navigator.clipboard.writeText(text).then(function () {
+        $("copiedMsg").textContent = "Copied! Use this link instead of the plain one.";
+      }).catch(function () {
+        $("copiedMsg").textContent = "Couldn’t copy automatically. Select the link above and copy it.";
       });
     });
+
+    // Start over, but keep the URL (people often tag one page for several channels)
+    $("newLink").addEventListener("click", function () {
+      answers.channel = null;
+      answers.source = answers.medium = answers.campaign = answers.content = answers.term = "";
+      ["source", "medium", "campaign", "content", "term"].forEach(function (id) { $(id).value = ""; });
+      ["sourceHint", "mediumHint", "campaignHint"].forEach(function (id) { $(id).textContent = ""; });
+      document.querySelectorAll(".card").forEach(function (c) { c.classList.remove("selected"); });
+      $("filled").classList.remove("show");
+      $("manual").classList.remove("show");
+      $("next2").disabled = true;
+      $("next3").disabled = true;
+      goTo(2);
+    });
+
+    goTo(0);
   </script>
 </body>
 </html>
