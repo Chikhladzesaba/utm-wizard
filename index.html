@@ -189,6 +189,7 @@
     .channel .small { font-size: 12px; color: var(--muted); }
 
     .copied-msg { text-align: center; font-size: 14px; color: var(--good); min-height: 20px; }
+    .copied-msg.bad { color: #c0262d; }
 
     /* Welcome screen: two stacked buttons */
     .actions.stack { flex-direction: column; }
@@ -440,11 +441,11 @@
       <div class="kit" id="kitView" hidden>
         <p id="kitIntro"></p>
         <div class="kit-list" id="kitList"></div>
-        <button class="btn copy" id="copyAllBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-          Copy all links
+        <button class="btn copy" id="downloadBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+          Download as spreadsheet
         </button>
-        <div class="hint" style="text-align: center">Pastes as two columns, channel and link, into Google Sheets or Excel.</div>
+        <div class="hint" style="text-align: center">A .csv file with every link, channel, source and medium. Opens in Google Sheets or Excel.</div>
         <div class="small-note">Channel badges are predictions based on Google Analytics 4’s default rules (simplified).</div>
       </div>
 
@@ -1034,18 +1035,58 @@
       });
     }
 
-    // "Copy all": one line per link, with a tab between channel and link, so it pastes as two columns
-    $("copyAllBtn").addEventListener("click", function () {
-      const lines = results.map(function (r) { return r.item.label + "\t" + r.link.toString(); });
-      copyText(lines.join("\n"), "Copied " + results.length + " links. Paste them into a sheet or message.");
+    // "Download as spreadsheet": build a CSV file (comma-separated values) and let the browser save it
+    function csvCell(value) {
+      return '"' + String(value).replace(/"/g, '""') + '"'; // quotes keep commas inside a value from breaking columns
+    }
+
+    $("downloadBtn").addEventListener("click", function () {
+      const rows = [["Channel", "Source", "Medium", "Campaign", "GA4 channel (predicted)", "Link"]];
+      results.forEach(function (r) {
+        rows.push([r.item.label, r.item.source, r.item.medium, answers.campaign,
+                   predictChannel(r.item.source, r.item.medium).name, r.link.toString()]);
+      });
+      const csv = rows.map(function (row) { return row.map(csvCell).join(","); }).join("\n");
+
+      // "﻿" tells Excel the file is UTF-8, so special characters display correctly
+      const file = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(file);
+      a.download = "utm-links-" + answers.campaign + ".csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000); // free the memory once the download has started
+
+      $("copiedMsg").classList.remove("bad");
+      $("copiedMsg").textContent = "Downloaded " + results.length + " links as a spreadsheet.";
     });
 
-    function copyText(text, successMessage) {
-      navigator.clipboard.writeText(text).then(function () {
-        $("copiedMsg").textContent = successMessage;
-      }).catch(function () {
-        $("copiedMsg").textContent = "Couldn’t copy automatically. Select the link and copy it by hand.";
-      });
+    // Copy text to the clipboard. Tries the modern way first, then an older way that works in more places.
+    function copyText(text, successMessage, messageBox) {
+      const box = messageBox || $("copiedMsg");
+      function report(ok) {
+        box.textContent = ok ? successMessage : "Your browser blocked copying here. Open the live site in a normal browser tab and try again.";
+        box.classList.toggle("bad", !ok);
+      }
+      function oldWay() {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        let ok = false;
+        try { ok = document.execCommand("copy"); } catch (error) { ok = false; }
+        area.remove();
+        report(ok);
+      }
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(function () { report(true); }).catch(oldWay);
+      } else {
+        oldWay();
+      }
     }
 
     // One channel: the detailed view
@@ -1255,11 +1296,7 @@
 
     $("doctorCopy").addEventListener("click", function () {
       if (!lastFixedUrl) return;
-      navigator.clipboard.writeText(lastFixedUrl.toString()).then(function () {
-        $("doctorCopied").textContent = "Copied! Use this link instead of the old one.";
-      }).catch(function () {
-        $("doctorCopied").textContent = "Couldn’t copy automatically. Select the link above and copy it.";
-      });
+      copyText(lastFixedUrl.toString(), "Copied! Use this link instead of the old one.", $("doctorCopied"));
     });
 
     goTo(0);
