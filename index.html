@@ -226,6 +226,22 @@
     .opt { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border); background: #ffffff; color: var(--ink); font: 500 14px var(--sans); cursor: pointer; }
     .opt.selected { border: 1.5px solid var(--accent); background: var(--badge); color: var(--accent); font-weight: 600; }
     .question input { height: 48px; }
+
+    /* Campaign Kit (several channels at once) */
+    .picked { display: flex; flex-direction: column; gap: 6px; }
+    .picked-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; }
+    .manual .q { font-weight: 600; font-size: 15px; }
+    .single, .kit { display: flex; flex-direction: column; gap: 20px; }
+    .kit { gap: 12px; }
+    .kit-list { display: flex; flex-direction: column; gap: 10px; }
+    .kit-item { border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .kit-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .kit-head strong { font-size: 15px; }
+    .badge { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+    .badge.ok { background: #eefaf3; color: var(--good); }
+    .badge.warn { background: #fff6ec; color: #a14b00; }
+    .kit-item .opt { align-self: flex-start; min-height: 40px; }
+    .small-note { font-size: 12px; color: var(--muted); text-align: center; }
     footer { text-align: center; font-size: 13px; color: var(--muted); }
     footer a { color: var(--muted); }
   </style>
@@ -304,6 +320,7 @@
     <section class="screen" id="step2">
       <div class="label">Channel</div>
       <h1>Where will people click this link?</h1>
+      <p>Pick one or more. Each place gets its own link, all with the same campaign name.</p>
 
       <div class="cards" id="cards"></div>
 
@@ -313,16 +330,13 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>
             Wizard filled this for you
           </span>
-          <button class="text-btn" id="editManual">Edit</button>
         </div>
-        <div class="chips">
-          <span class="chip">source = <strong id="chipSource"></strong></span>
-          <span class="chip">medium = <strong id="chipMedium"></strong></span>
-        </div>
+        <div class="picked" id="picked"></div>
         <div class="why" id="why"></div>
       </div>
 
       <div class="manual" id="manual">
+        <div class="q">Something else: write your own source and medium</div>
         <div class="field">
           <label for="source">Source <span>· who sends the visitor</span></label>
           <input id="source" type="text" autocomplete="off" placeholder="e.g. facebook, partner-blog">
@@ -404,20 +418,35 @@
 
     <!-- STEP 4: Result -->
     <section class="screen" id="step4">
-      <div class="label">Your link</div>
+      <div class="label" id="resultLabel">Your link</div>
       <h1>Ready to <em>track</em>.</h1>
 
-      <div class="link-box">
-        <div class="url-out" id="resultUrl"></div>
+      <!-- One channel: the link explained in detail -->
+      <div class="single" id="singleView">
+        <div class="link-box">
+          <div class="url-out" id="resultUrl"></div>
+        </div>
+
+        <div class="channel" id="channelBox">
+          <div class="title" id="channelTitle"></div>
+          <div class="note" id="channelNote"></div>
+          <div class="small">Prediction based on Google Analytics 4’s default channel rules (simplified).</div>
+        </div>
+
+        <div class="parts" id="parts"></div>
       </div>
 
-      <div class="channel" id="channelBox">
-        <div class="title" id="channelTitle"></div>
-        <div class="note" id="channelNote"></div>
-        <div class="small">Prediction based on Google Analytics 4’s default channel rules (simplified).</div>
+      <!-- Several channels: the Campaign Kit, one link per channel -->
+      <div class="kit" id="kitView" hidden>
+        <p id="kitIntro"></p>
+        <div class="kit-list" id="kitList"></div>
+        <button class="btn copy" id="copyAllBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          Copy all links
+        </button>
+        <div class="hint" style="text-align: center">Pastes as two columns, channel and link, into Google Sheets or Excel.</div>
+        <div class="small-note">Channel badges are predictions based on Google Analytics 4’s default rules (simplified).</div>
       </div>
-
-      <div class="parts" id="parts"></div>
 
       <div class="actions" style="flex-direction: column">
         <button class="btn copy" id="copyBtn">
@@ -762,7 +791,8 @@
     // ---------------------------------------------------------------
 
     // The current answers live in one place, like a row in a spreadsheet
-    const answers = { url: "", channel: null, source: "", medium: "", campaign: "", content: "", term: "" };
+    // channels = the ids of every card that's ticked; custom = what was typed under "Something else"
+    const answers = { url: "", channels: [], custom: { source: "", medium: "" }, campaign: "", content: "", term: "" };
     let currentStep = 0;
 
     // A tiny helper so we don't type document.getElementById every time
@@ -820,51 +850,83 @@
       btn.dataset.id = ch.id;
       btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[ch.id] + '</svg>';
       btn.appendChild(document.createTextNode(ch.label));
-      btn.addEventListener("click", function () { pickChannel(ch); });
+      btn.setAttribute("aria-pressed", "false");
+      btn.addEventListener("click", function () { toggleChannel(ch); });
       $("cards").appendChild(btn);
     });
 
-    function pickChannel(ch) {
-      answers.channel = ch.id;
-      document.querySelectorAll(".card").forEach(function (card) {
-        card.classList.toggle("selected", card.dataset.id === ch.id);
-      });
+    let lastPicked = null; // the card ticked most recently, to show its "why"
 
-      if (ch.id === "other") {
-        // No preset: the person types source and medium themselves
-        $("filled").classList.remove("show");
-        $("manual").classList.add("show");
-        $("source").value = "";
-        $("medium").value = "";
-        updateManual();
-        $("source").focus();
+    // Tick or untick a card
+    function toggleChannel(ch) {
+      const index = answers.channels.indexOf(ch.id);
+      if (index === -1) {
+        answers.channels.push(ch.id);
+        lastPicked = ch;
       } else {
-        answers.source = ch.source;
-        answers.medium = ch.medium;
-        $("source").value = ch.source;
-        $("medium").value = ch.medium;
-        $("chipSource").textContent = ch.source;
-        $("chipMedium").textContent = ch.medium;
-        $("why").textContent = ch.why;
-        $("filled").classList.add("show");
-        $("manual").classList.remove("show");
-        $("next2").disabled = false;
+        answers.channels.splice(index, 1);
+        lastPicked = null;
       }
+      updateStep2();
+      if (ch.id === "other" && index === -1) $("source").focus();
     }
 
-    // "Edit" lets people change what the wizard filled in
-    $("editManual").addEventListener("click", function () {
-      $("filled").classList.remove("show");
-      $("manual").classList.add("show");
-      updateManual();
-    });
+    // Every link the person will get: one per ticked card, plus the custom one
+    function selectedLinks() {
+      const list = [];
+      CHANNELS.forEach(function (ch) {
+        if (ch.id !== "other" && answers.channels.includes(ch.id)) {
+          list.push({ label: ch.label, source: ch.source, medium: ch.medium });
+        }
+      });
+      if (answers.channels.includes("other") && answers.custom.source && answers.custom.medium) {
+        list.push({ label: "Custom: " + answers.custom.source, source: answers.custom.source, medium: answers.custom.medium });
+      }
+      return list;
+    }
+
+    // Redraw step 2 from the answers
+    function updateStep2() {
+      document.querySelectorAll(".card").forEach(function (card) {
+        const on = answers.channels.includes(card.dataset.id);
+        card.classList.toggle("selected", on);
+        card.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+
+      const otherOn = answers.channels.includes("other");
+      $("manual").classList.toggle("show", otherOn);
+
+      // The "Wizard filled this" box lists every ticked preset
+      const presets = CHANNELS.filter(function (ch) { return ch.id !== "other" && answers.channels.includes(ch.id); });
+      $("filled").classList.toggle("show", presets.length > 0);
+      const picked = $("picked");
+      picked.innerHTML = "";
+      presets.forEach(function (ch) {
+        const row = document.createElement("div");
+        row.className = "picked-row";
+        const name = document.createElement("span");
+        name.textContent = ch.label;
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = ch.source + " / " + ch.medium;
+        row.append(name, chip);
+        picked.appendChild(row);
+      });
+      const explain = lastPicked && lastPicked.id !== "other" ? lastPicked : (presets.length === 1 ? presets[0] : null);
+      $("why").textContent = explain ? explain.why : "";
+      $("why").hidden = !explain;
+
+      const customReady = !otherOn || (answers.custom.source && answers.custom.medium);
+      const count = selectedLinks().length;
+      $("next2").disabled = count === 0 || !customReady;
+    }
 
     function updateManual() {
-      answers.source = clean($("source").value);
-      answers.medium = clean($("medium").value);
-      showSaved($("source"), $("sourceHint"), answers.source);
-      showSaved($("medium"), $("mediumHint"), answers.medium);
-      $("next2").disabled = !(answers.source && answers.medium);
+      answers.custom.source = clean($("source").value);
+      answers.custom.medium = clean($("medium").value);
+      showSaved($("source"), $("sourceHint"), answers.custom.source);
+      showSaved($("medium"), $("mediumHint"), answers.custom.medium);
+      updateStep2();
     }
     $("source").addEventListener("input", updateManual);
     $("medium").addEventListener("input", updateManual);
@@ -904,24 +966,97 @@
     $("next3").addEventListener("click", function () { goTo(4); });
 
     // ---- Step 4: Result ----
-    function buildLink() {
+    // Build one link for one channel. Campaign, content and term are shared by every link.
+    function buildLink(item) {
       const link = new URL(answers.url);
-      link.searchParams.set("utm_source", answers.source);
-      link.searchParams.set("utm_medium", answers.medium);
+      link.searchParams.set("utm_source", item.source);
+      link.searchParams.set("utm_medium", item.medium);
       link.searchParams.set("utm_campaign", answers.campaign);
       if (answers.content) link.searchParams.set("utm_content", answers.content); else link.searchParams.delete("utm_content");
       if (answers.term) link.searchParams.set("utm_term", answers.term); else link.searchParams.delete("utm_term");
       return link;
     }
 
+    let results = []; // [{ item, link }] for the copy buttons
+
     function showResult() {
-      const link = buildLink();
+      // THE LOOP: one rule (buildLink), applied to every ticked channel
+      results = selectedLinks().map(function (item) {
+        return { item: item, link: buildLink(item) };
+      });
+      $("copiedMsg").textContent = "";
+
+      const single = results.length === 1;
+      $("singleView").hidden = !single;
+      $("copyBtn").hidden = !single;
+      $("kitView").hidden = single;
+      $("resultLabel").textContent = single ? "Your link" : "Your campaign kit";
+
+      if (single) showSingle(results[0]);
+      else showKit();
+    }
+
+    // Several channels: one card per link
+    function showKit() {
+      $("kitIntro").textContent = results.length + " links for the campaign “" + answers.campaign + "”. The campaign name is identical in all of them, so they add up in your reports.";
+      const list = $("kitList");
+      list.innerHTML = "";
+      results.forEach(function (r) {
+        const channel = predictChannel(r.item.source, r.item.medium);
+        const card = document.createElement("div");
+        card.className = "kit-item";
+
+        const head = document.createElement("div");
+        head.className = "kit-head";
+        const name = document.createElement("strong");
+        name.textContent = r.item.label;
+        const badge = document.createElement("span");
+        badge.className = "badge " + (channel.ok ? "ok" : "warn");
+        badge.textContent = (channel.ok ? "" : "⚠ ") + channel.name;
+        badge.title = channel.note;
+        head.append(name, badge);
+
+        const url = document.createElement("div");
+        url.className = "url-out";
+        showColoredUrl(url, r.link);
+
+        const copy = document.createElement("button");
+        copy.className = "opt";
+        copy.textContent = "Copy";
+        copy.addEventListener("click", function () {
+          copyText(r.link.toString(), "Copied the " + r.item.label + " link.");
+          copy.textContent = "Copied ✓";
+          setTimeout(function () { copy.textContent = "Copy"; }, 1500);
+        });
+
+        card.append(head, url, copy);
+        list.appendChild(card);
+      });
+    }
+
+    // "Copy all": one line per link, with a tab between channel and link, so it pastes as two columns
+    $("copyAllBtn").addEventListener("click", function () {
+      const lines = results.map(function (r) { return r.item.label + "\t" + r.link.toString(); });
+      copyText(lines.join("\n"), "Copied " + results.length + " links. Paste them into a sheet or message.");
+    });
+
+    function copyText(text, successMessage) {
+      navigator.clipboard.writeText(text).then(function () {
+        $("copiedMsg").textContent = successMessage;
+      }).catch(function () {
+        $("copiedMsg").textContent = "Couldn’t copy automatically. Select the link and copy it by hand.";
+      });
+    }
+
+    // One channel: the detailed view
+    function showSingle(r) {
+      const link = r.link;
 
       // 1. The link, with each UTM part in its own color
       showColoredUrl($("resultUrl"), link);
 
       // 2. The GA4 channel preview
-      const channel = predictChannel(answers.source, answers.medium);
+      const channel = predictChannel(r.item.source, r.item.medium);
       $("channelBox").className = "channel " + (channel.ok ? "ok" : "warn");
       $("channelTitle").textContent = (channel.ok ? "✓ Will appear in Google Analytics as " : "⚠ Will appear in Google Analytics as ") + channel.name;
       $("channelNote").textContent = channel.note;
@@ -943,8 +1078,6 @@
         row.querySelector(".explain").textContent = info.explain;
         parts.appendChild(row);
       });
-
-      $("copiedMsg").textContent = "";
     }
 
     // Write a link into an element, with each UTM part in its own color (used by the wizard and the Doctor)
@@ -964,24 +1097,18 @@
 
     // Copy to clipboard
     $("copyBtn").addEventListener("click", function () {
-      const text = buildLink().toString();
-      navigator.clipboard.writeText(text).then(function () {
-        $("copiedMsg").textContent = "Copied! Use this link instead of the plain one.";
-      }).catch(function () {
-        $("copiedMsg").textContent = "Couldn’t copy automatically. Select the link above and copy it.";
-      });
+      copyText(results[0].link.toString(), "Copied! Use this link instead of the plain one.");
     });
 
-    // Start over, but keep the URL (people often tag one page for several channels)
+    // Start over, but keep the URL (people often tag one page for several campaigns)
     $("newLink").addEventListener("click", function () {
-      answers.channel = null;
-      answers.source = answers.medium = answers.campaign = answers.content = answers.term = "";
+      answers.channels = [];
+      answers.custom = { source: "", medium: "" };
+      answers.campaign = answers.content = answers.term = "";
+      lastPicked = null;
       ["source", "medium", "campaign", "content", "term"].forEach(function (id) { $(id).value = ""; });
       ["sourceHint", "mediumHint", "campaignHint"].forEach(function (id) { $(id).textContent = ""; });
-      document.querySelectorAll(".card").forEach(function (c) { c.classList.remove("selected"); });
-      $("filled").classList.remove("show");
-      $("manual").classList.remove("show");
-      $("next2").disabled = true;
+      updateStep2();
       $("next3").disabled = true;
       goTo(2);
     });
