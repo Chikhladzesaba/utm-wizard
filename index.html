@@ -33,6 +33,7 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; } /* "hidden" must always win over display: flex */
     body {
       margin: 0;
       background: #ffffff;
@@ -188,6 +189,43 @@
     .channel .small { font-size: 12px; color: var(--muted); }
 
     .copied-msg { text-align: center; font-size: 14px; color: var(--good); min-height: 20px; }
+
+    /* Welcome screen: two stacked buttons */
+    .actions.stack { flex-direction: column; }
+    .actions.stack .btn { flex: none; width: 100%; height: 52px; }
+    .btn.solo { flex: none; width: 100%; }
+
+    /* Link Doctor */
+    textarea {
+      width: 100%;
+      padding: 12px 16px;
+      font: 14px/1.5 var(--mono);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 106, 255, .12); }
+    .report { display: flex; flex-direction: column; gap: 16px; }
+    .report[hidden] { display: none; }
+    .summary { border-radius: 16px; padding: 14px 16px; background: var(--ink); color: #ffffff; display: flex; flex-direction: column; gap: 4px; }
+    .summary strong { font-size: 16px; font-weight: 600; }
+    .summary span { font-size: 14px; color: #c9cbd2; }
+    .summary.good { background: #eefaf3; color: var(--ink); border: 1px solid #b9e4cb; }
+    .summary.good span, .summary.bad span { color: #3d3f48; }
+    .summary.bad { background: #fff6ec; color: var(--ink); border: 1px solid #f3cf9f; }
+    .issue { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 1.45; }
+    .issue:last-child { border-bottom: 0; }
+    .issue svg { width: 18px; height: 18px; margin-top: 1px; }
+    .issue strong { word-break: break-all; }
+    .questions { display: flex; flex-direction: column; gap: 12px; }
+    .question { border: 1.5px solid #f3cf9f; background: #fff6ec; border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+    .question.done { border-color: #b9e4cb; background: #eefaf3; }
+    .question .q { font-weight: 600; font-size: 15px; line-height: 1.35; }
+    .options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .opt { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border); background: #ffffff; color: var(--ink); font: 500 14px var(--sans); cursor: pointer; }
+    .opt.selected { border: 1.5px solid var(--accent); background: var(--badge); color: var(--accent); font-weight: 600; }
+    .question input { height: 48px; }
     footer { text-align: center; font-size: 13px; color: var(--muted); }
     footer a { color: var(--muted); }
   </style>
@@ -224,10 +262,11 @@
 
       <p>You don’t need to remember any rules. Answer 3 simple questions and the wizard builds a correct link for you. It takes about a minute.</p>
 
-      <div class="actions">
-        <button class="btn primary" id="startBtn">Let’s build a link
+      <div class="actions stack">
+        <button class="btn primary" id="startBtn">Build a new link
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
+        <button class="btn ghost" data-go="5">Check an existing link</button>
       </div>
     </section>
 
@@ -246,7 +285,7 @@
       <details class="learn">
         <summary>Why can’t Analytics tell this by itself?</summary>
         <div class="body">
-          <p>Sometimes it can, but often it can’t. Apps like Instagram, WhatsApp or email programs often hide where a click came from, so Google Analytics files those visitors under “Direct”, which means “no idea”.</p>
+          <p>Sometimes it can, but often it can’t. Apps like Instagram, WhatsApp or email programs often hide where a click came from, so analytics tools file those visitors under “Direct”, which means “no idea”.</p>
           <p>UTM labels travel inside the link itself, so the information never gets lost.</p>
         </div>
       </details>
@@ -393,6 +432,50 @@
       </div>
     </section>
 
+    <!-- LINK DOCTOR: checks an existing link, explains problems, gives a fixed version -->
+    <section class="screen" id="step5">
+      <div class="label">Link Doctor</div>
+      <h1>Is this link <em>set up right</em>?</h1>
+      <p>Paste a link someone gave you. The Doctor checks it, explains any problems and gives you a fixed version.</p>
+
+      <div class="field">
+        <label for="doctorInput">Paste a link</label>
+        <textarea id="doctorInput" rows="3" spellcheck="false" placeholder="e.g. shop.com/sale?utm_source=Facebook&amp;utm_campaign=Spring Sale"></textarea>
+      </div>
+      <button class="btn primary solo" id="checkBtn" disabled>Check link</button>
+
+      <div class="report" id="doctorReport" hidden>
+        <div class="summary" id="doctorSummary"></div>
+        <div class="issues" id="doctorIssues"></div>
+        <div class="questions" id="doctorQuestions"></div>
+        <div class="link-box" id="doctorFixed" hidden>
+          <span class="k">Fixed link</span>
+          <div class="url-out" id="doctorUrl"></div>
+        </div>
+        <button class="btn copy" id="doctorCopy" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          Copy fixed link
+        </button>
+        <div class="copied-msg" id="doctorCopied" aria-live="polite"></div>
+      </div>
+
+      <details class="learn">
+        <summary>What does the Doctor check?</summary>
+        <div class="body">
+          <ul>
+            <li><strong>Parameter names:</strong> typos like <span class="code">utm_campain</span> and capitals like <span class="code">UTM_Source</span>.</li>
+            <li><strong>Values:</strong> capitals, spaces and symbols that split one campaign into several rows in reports.</li>
+            <li><strong>Missing parts:</strong> source, medium and campaign must all be there.</li>
+            <li><strong>Channel:</strong> whether Google Analytics will recognise the medium, and whether a social link is really a paid ad.</li>
+          </ul>
+          <p>When there’s only one correct answer, the Doctor fixes it for you. When it depends on what you meant, it asks.</p>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button class="btn ghost" data-go="0">Back to start</button>
+      </div>
+    </section>
   </main>
 
   <!-- ============ JavaScript: what the page DOES ============ -->
@@ -512,6 +595,168 @@
       utm_term:     { name: "Term",     color: "var(--c-extra)",    explain: "The keyword." }
     };
 
+    // Returns a valid URL object, or null if the text isn't a usable web address
+    function parseUrl(text) {
+      text = text.trim();
+      if (!text) return null;
+      if (!/^https?:\/\//i.test(text)) text = "https://" + text;
+      try {
+        const url = new URL(text);
+        return url.hostname.includes(".") ? url : null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // LINK DOCTOR'S "BRAIN": takes a link apart, runs the checklist,
+    // fixes what has one correct answer, and asks about the rest
+    // ---------------------------------------------------------------
+
+    const UTM_NAMES = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id"];
+
+    // How many single-letter edits turn word a into word b ("utm_campain" → "utm_campaign" = 1)
+    function distance(a, b) {
+      const d = [];
+      for (let i = 0; i <= a.length; i++) d[i] = [i];
+      for (let j = 1; j <= b.length; j++) d[0][j] = j;
+      for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+          d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        }
+      }
+      return d[a.length][b.length];
+    }
+
+    // Which UTM name did the person mean? Returns the correct name, or null if it isn't a UTM at all
+    function matchUtmName(name) {
+      const n = name.trim().toLowerCase().replace(/[\s-]/g, "_");
+      if (UTM_NAMES.includes(n)) return n;
+      let best = null;
+      let bestDistance = 3; // up to 2 typos count as "probably meant this"
+      UTM_NAMES.forEach(function (known) {
+        const dist = distance(n, known);
+        if (dist < bestDistance) { best = known; bestDistance = dist; }
+      });
+      return best;
+    }
+
+    // Explain in plain words why a value needed cleaning
+    function explainClean(value) {
+      const reasons = [];
+      if (value !== value.toLowerCase()) reasons.push("capital letters");
+      if (/\s/.test(value)) reasons.push("spaces");
+      if (/[^A-Za-z0-9\s-]/.test(value)) reasons.push("symbols or non-Latin letters");
+      return "Had " + reasons.join(" and ") + ". The same name written differently shows up as separate rows in reports.";
+    }
+
+    const MEDIUM_OPTIONS = [
+      { label: "Paid ad", value: "cpc" },
+      { label: "Free social post", value: "social" },
+      { label: "Email", value: "email" },
+      { label: "Link on another website", value: "referral" }
+    ];
+
+    // The main check. "answers" holds what the person answered to the Doctor's questions.
+    function diagnose(text, answers) {
+      const url = parseUrl(text);
+      if (!url) return { error: "This doesn’t look like a link. Check that you copied the whole thing." };
+
+      const issues = [];     // problems the Doctor fixed
+      const questions = [];  // things only a human can decide
+      const found = {};      // correct UTM name → value as written
+      const tracked = {};    // values whose names were already written correctly (what analytics sees today)
+      const others = [];     // non-UTM parameters, kept untouched
+
+      // 1. READ: go through every parameter in the link
+      url.searchParams.forEach(function (value, name) {
+        const correct = matchUtmName(name);
+        if (!correct) { others.push([name, value]); return; }
+        if (correct in found) {
+          issues.push({ title: correct + " appears twice", text: "Kept the first one. Two values for the same label confuse analytics tools." });
+          return;
+        }
+        if (name !== correct) {
+          const caseOnly = name.toLowerCase() === correct;
+          issues.push({
+            title: name + " → " + correct,
+            text: caseOnly ? "Parameter names must be lowercase, or analytics tools may ignore them."
+                           : "A typo in the name means analytics never records this value."
+          });
+        } else {
+          tracked[correct] = value;
+        }
+        found[correct] = value;
+      });
+
+      if (Object.keys(found).length === 0) return { noUtm: true, url: url };
+
+      // 2. CHECK + FIX values that have one correct answer
+      const fixed = {};
+      Object.keys(found).forEach(function (name) {
+        const value = found[name];
+        const cleaned = clean(value);
+        if (cleaned && cleaned !== value) issues.push({ title: value + " → " + cleaned, text: explainClean(value) });
+        if (cleaned) fixed[name] = cleaned;
+      });
+
+      // 3. ASK about what depends on the person's intent
+      if (!fixed.utm_source) {
+        questions.push({ id: "source", kind: "text", text: "Source is missing. Where was this link shared?", placeholder: "e.g. facebook, newsletter", answered: !!answers.source });
+        if (answers.source) fixed.utm_source = answers.source;
+      }
+
+      const source = fixed.utm_source || "";
+      if (!fixed.utm_medium) {
+        questions.push({ id: "medium", kind: "options", text: "Medium is missing. What kind of traffic is this?", options: MEDIUM_OPTIONS, answered: !!answers.medium });
+      } else if (!predictChannel(source, fixed.utm_medium).ok) {
+        questions.push({
+          id: "medium", kind: "options", answered: !!answers.medium,
+          text: "Google Analytics doesn’t recognise the medium “" + fixed.utm_medium + "”, so this traffic lands in Unassigned. What kind of traffic is it?",
+          options: MEDIUM_OPTIONS.concat([{ label: "Keep “" + fixed.utm_medium + "”", value: fixed.utm_medium }])
+        });
+      } else if (predictChannel(source, fixed.utm_medium).name === "Organic Social") {
+        // Social links count as free posts unless the medium says "paid", so check what it really is
+        questions.push({
+          id: "paid", kind: "options", answered: !!answers.paid,
+          text: "Is this link used in a paid ad? Ads need medium “cpc”, or they get counted as free posts.",
+          options: [{ label: "Yes, it’s an ad", value: "yes" }, { label: "No, a free post", value: "no" }]
+        });
+        if (answers.paid === "yes") fixed.utm_medium = "cpc";
+        if (answers.paid === "no") fixed.utm_medium = "social";
+      }
+      if (answers.medium) fixed.utm_medium = answers.medium;
+
+      if (!fixed.utm_campaign) {
+        questions.push({ id: "campaign", kind: "text", text: "Campaign is missing. What are you promoting?", placeholder: "e.g. Spring Sale 2026", answered: !!answers.campaign });
+        if (answers.campaign) fixed.utm_campaign = answers.campaign;
+      }
+
+      // 4. REPORT: build the fixed link once everything is known
+      const ready = !!(fixed.utm_source && fixed.utm_medium && fixed.utm_campaign);
+      let fixedUrl = null;
+      if (ready) {
+        fixedUrl = new URL(url.origin + url.pathname);
+        others.forEach(function (pair) { fixedUrl.searchParams.append(pair[0], pair[1]); });
+        UTM_NAMES.forEach(function (name) { if (fixed[name]) fixedUrl.searchParams.set(name, fixed[name]); });
+        fixedUrl.hash = url.hash;
+      }
+
+      const before = tracked.utm_source && tracked.utm_medium
+        ? predictChannel(tracked.utm_source.toLowerCase(), tracked.utm_medium.toLowerCase()).name
+        : "Not tracked properly";
+      const after = ready ? predictChannel(fixed.utm_source, fixed.utm_medium).name : null;
+
+      return {
+        issues: issues,
+        questions: questions,
+        openQuestions: questions.filter(function (q) { return !q.answered; }).length,
+        fixedUrl: fixedUrl,
+        before: before,
+        after: after
+      };
+    }
+
     // ---------------------------------------------------------------
     // PART 2: THE PAGE — connect the brain to buttons and inputs
     // ---------------------------------------------------------------
@@ -526,14 +771,14 @@
     // Show one step and hide the others
     function goTo(step) {
       currentStep = step;
-      for (let i = 0; i <= 4; i++) {
+      for (let i = 0; i <= 5; i++) {
         $("step" + i).classList.toggle("active", i === step);
       }
-      $("progress").hidden = step === 0;
+      $("progress").hidden = step === 0 || step === 5;
       $("progress").querySelectorAll("span").forEach(function (bar, i) {
         bar.classList.toggle("on", i < step);
       });
-      $("stepCount").textContent = step === 0 ? "" : step === 4 ? "Done" : "Step " + step + " of 4";
+      $("stepCount").textContent = step === 0 ? "" : step === 5 ? "Link Doctor" : step === 4 ? "Done" : "Step " + step + " of 4";
       if (step === 4) showResult();
       window.scrollTo(0, 0);
     }
@@ -545,19 +790,6 @@
     $("startBtn").addEventListener("click", function () { goTo(1); $("url").focus(); });
 
     // ---- Step 1: URL ----
-    // Returns a valid URL object, or null if the text isn't a usable web address
-    function parseUrl(text) {
-      text = text.trim();
-      if (!text) return null;
-      if (!/^https?:\/\//i.test(text)) text = "https://" + text;
-      try {
-        const url = new URL(text);
-        return url.hostname.includes(".") ? url : null;
-      } catch (error) {
-        return null;
-      }
-    }
-
     $("url").addEventListener("input", function () {
       const raw = $("url").value.trim();
       const url = parseUrl(raw);
@@ -686,18 +918,7 @@
       const link = buildLink();
 
       // 1. The link, with each UTM part in its own color
-      const out = $("resultUrl");
-      out.textContent = link.origin + link.pathname;
-      let first = true;
-      link.searchParams.forEach(function (value, key) {
-        out.append(first ? "?" : "&");
-        first = false;
-        const span = document.createElement("span");
-        span.className = "p-" + key;
-        span.textContent = new URLSearchParams([[key, value]]).toString();
-        out.append(span);
-      });
-      out.append(link.hash);
+      showColoredUrl($("resultUrl"), link);
 
       // 2. The GA4 channel preview
       const channel = predictChannel(answers.source, answers.medium);
@@ -726,6 +947,21 @@
       $("copiedMsg").textContent = "";
     }
 
+    // Write a link into an element, with each UTM part in its own color (used by the wizard and the Doctor)
+    function showColoredUrl(out, link) {
+      out.textContent = link.origin + link.pathname;
+      let first = true;
+      link.searchParams.forEach(function (value, key) {
+        out.append(first ? "?" : "&");
+        first = false;
+        const span = document.createElement("span");
+        span.className = "p-" + key;
+        span.textContent = new URLSearchParams([[key, value]]).toString();
+        out.append(span);
+      });
+      out.append(link.hash);
+    }
+
     // Copy to clipboard
     $("copyBtn").addEventListener("click", function () {
       const text = buildLink().toString();
@@ -748,6 +984,155 @@
       $("next2").disabled = true;
       $("next3").disabled = true;
       goTo(2);
+    });
+
+    // ---- Link Doctor screen ----
+    let doctorAnswers = {};
+
+    const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="#0b7a3e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+    $("doctorInput").addEventListener("input", function () {
+      $("checkBtn").disabled = !$("doctorInput").value.trim();
+      doctorAnswers = {};               // a new link means new answers
+      $("doctorReport").hidden = true;
+    });
+    $("checkBtn").addEventListener("click", function () { renderDoctor(true); });
+
+    // rebuildQuestions = false while someone types an answer, so the input keeps its focus
+    function renderDoctor(rebuildQuestions) {
+      const r = diagnose($("doctorInput").value, doctorAnswers);
+      $("doctorReport").hidden = false;
+      $("doctorCopied").textContent = "";
+      const summary = $("doctorSummary");
+      summary.innerHTML = "<strong></strong><span></span>";
+
+      // Not a link at all
+      if (r.error) {
+        summary.className = "summary bad";
+        summary.querySelector("strong").textContent = r.error;
+        summary.querySelector("span").remove();
+        hideDoctorParts();
+        return;
+      }
+
+      // A link without any UTMs: offer to build one
+      if (r.noUtm) {
+        summary.className = "summary bad";
+        summary.querySelector("strong").textContent = "No UTM labels found";
+        summary.querySelector("span").textContent = "Analytics won’t know where visitors from this link came from.";
+        hideDoctorParts();
+        const btn = document.createElement("button");
+        btn.className = "btn primary solo";
+        btn.textContent = "Build one with the wizard";
+        btn.addEventListener("click", function () {
+          $("url").value = r.url.origin + r.url.pathname + r.url.search + r.url.hash;
+          $("url").dispatchEvent(new Event("input"));
+          goTo(2);
+        });
+        $("doctorIssues").appendChild(btn);
+        return;
+      }
+
+      // Summary line
+      const parts = [];
+      if (r.issues.length) parts.push(r.issues.length + " fixed");
+      if (r.openQuestions) parts.push(r.openQuestions + (r.openQuestions === 1 ? " needs you" : " need you"));
+      if (!r.issues.length && !r.questions.length) {
+        summary.className = "summary good";
+        summary.querySelector("strong").textContent = "✓ Looks healthy";
+        summary.querySelector("span").textContent = "No problems found. It will appear in Google Analytics as " + r.after + ".";
+      } else if (!r.openQuestions) {
+        summary.className = "summary good";
+        summary.querySelector("strong").textContent = "✓ All fixed";
+        summary.querySelector("span").textContent = "Google Analytics channel: " + r.before + " → " + r.after;
+      } else {
+        summary.className = "summary";
+        summary.querySelector("strong").textContent = parts.join(" · ");
+        summary.querySelector("span").textContent = "Google Analytics channel: " + r.before + " → " + (r.after || "answer below");
+      }
+
+      // What was fixed
+      const issuesBox = $("doctorIssues");
+      issuesBox.innerHTML = "";
+      r.issues.forEach(function (issue) {
+        const row = document.createElement("div");
+        row.className = "issue";
+        row.innerHTML = CHECK_ICON + "<span><strong></strong> </span>";
+        row.querySelector("strong").textContent = issue.title + ".";
+        row.querySelector("span").append(issue.text);
+        issuesBox.appendChild(row);
+      });
+
+      // Questions only a human can answer
+      if (rebuildQuestions) {
+        const box = $("doctorQuestions");
+        box.innerHTML = "";
+        r.questions.forEach(function (q) {
+          const card = document.createElement("div");
+          card.className = "question" + (q.answered ? " done" : "");
+          const title = document.createElement("div");
+          title.className = "q";
+          title.textContent = q.text;
+          card.appendChild(title);
+
+          if (q.kind === "options") {
+            const row = document.createElement("div");
+            row.className = "options";
+            q.options.forEach(function (opt) {
+              const b = document.createElement("button");
+              b.className = "opt" + (doctorAnswers[q.id] === opt.value ? " selected" : "");
+              b.textContent = opt.label;
+              b.addEventListener("click", function () {
+                doctorAnswers[q.id] = opt.value;
+                renderDoctor(true);
+              });
+              row.appendChild(b);
+            });
+            card.appendChild(row);
+          } else {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.placeholder = q.placeholder;
+            input.value = doctorAnswers[q.id + "Raw"] || "";
+            const hint = document.createElement("div");
+            hint.className = "hint";
+            input.addEventListener("input", function () {
+              doctorAnswers[q.id + "Raw"] = input.value;
+              doctorAnswers[q.id] = clean(input.value);
+              showSaved(input, hint, doctorAnswers[q.id]);
+              card.className = "question" + (doctorAnswers[q.id] ? " done" : "");
+              renderDoctor(false);
+            });
+            card.appendChild(input);
+            card.appendChild(hint);
+          }
+          box.appendChild(card);
+        });
+      }
+
+      // The fixed link, once everything is known
+      $("doctorFixed").hidden = !r.fixedUrl;
+      $("doctorCopy").hidden = !r.fixedUrl;
+      if (r.fixedUrl) showColoredUrl($("doctorUrl"), r.fixedUrl);
+      lastFixedUrl = r.fixedUrl;
+    }
+
+    let lastFixedUrl = null;
+
+    function hideDoctorParts() {
+      $("doctorIssues").innerHTML = "";
+      $("doctorQuestions").innerHTML = "";
+      $("doctorFixed").hidden = true;
+      $("doctorCopy").hidden = true;
+    }
+
+    $("doctorCopy").addEventListener("click", function () {
+      if (!lastFixedUrl) return;
+      navigator.clipboard.writeText(lastFixedUrl.toString()).then(function () {
+        $("doctorCopied").textContent = "Copied! Use this link instead of the old one.";
+      }).catch(function () {
+        $("doctorCopied").textContent = "Couldn’t copy automatically. Select the link above and copy it.";
+      });
     });
 
     goTo(0);
