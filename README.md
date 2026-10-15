@@ -26,7 +26,7 @@ UTM Wizard is your guide. You don't need to know the rules: answer a few plain q
 - **Teaches while you build.** Every step has a short "Learn" box, so new team members understand UTMs instead of just copying them.
 - **Speaks human.** You choose "Facebook ad", not "utm_medium = cpc". The wizard knows the conventions.
 - **GA4 channel preview.** Before you share a link, see which Google Analytics 4 channel it will land in (Paid Social, Email, Organic Social…), with a warning when it would end up as "Unassigned".
-- **Automatic cleanup.** Lowercase, hyphens instead of spaces, no special characters, and Georgian text converted to Latin letters (`შავი პარასკევი` → `shavi-paraskevi`).
+- **Automatic cleanup.** Lowercase, hyphens instead of spaces, no special characters.
 
 ## Channel cheat sheet
 
