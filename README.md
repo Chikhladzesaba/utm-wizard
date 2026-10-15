@@ -2,7 +2,7 @@
 
 **Build correct UTM links step by step, and understand them along the way.**
 
-👉 **Try it:** [chikhladzesaba.github.io/utm-wizard]
+👉 **Try it:**  https://chikhladzesaba.github.io/utm-wizard/
 
 ---
 
