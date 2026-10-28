@@ -264,6 +264,23 @@
     .badge.warn { background: #fff6ec; color: #a14b00; }
     .kit-item .opt { align-self: flex-start; min-height: 40px; }
     .small-note { font-size: 12px; color: var(--muted); text-align: center; }
+
+    /* My channels: the person's own saved source + medium pairs */
+    .card.mine { position: relative; }
+    .card.mine .tag { position: absolute; top: -9px; right: 12px; font-size: 11px; font-weight: 600; line-height: 1; color: var(--accent); background: #ffffff; border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; }
+    .card.mine.selected .tag { border-color: var(--accent); }
+    .save-row { display: flex; flex-direction: column; gap: 8px; }
+    .save-row .btn.ghost { flex: none; width: 100%; }
+    .save-row .btn.ghost:disabled { color: #9a9ca5; cursor: not-allowed; }
+    .mine-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .mine-row:last-child { border-bottom: 0; }
+    .mine-row .mine-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .mine-row .chip { align-self: flex-start; }
+    .mine-row .opt { min-height: 36px; padding: 0 12px; font-size: 13px; }
+    .rules-box { border: 1px solid var(--border); border-radius: 16px; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; }
+    .rules-head { font-weight: 600; font-size: 15px; }
+    #step6 .manual .hint:empty, #step6 .copied-msg:empty { display: none; } /* no empty gaps while the form is blank */
+    #step6 p .code { white-space: nowrap; word-break: normal; }
     footer { text-align: center; font-size: 13px; color: var(--muted); }
     footer a { color: var(--muted); }
   </style>
@@ -314,6 +331,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
         <button class="btn ghost" data-go="5">Check an existing link</button>
+        <button class="btn ghost" data-go="6">My naming rules</button>
       </div>
     </section>
 
@@ -354,6 +372,7 @@
       <p>Pick one or more. Each place gets its own link, all with the same campaign name.</p>
 
       <div class="cards" id="cards"></div>
+      <div class="hint" id="addOwnHint">Missing a channel you use often? Tap <strong>Add your own</strong> and save it as a card.</div>
 
       <div class="filled" id="filled">
         <div class="filled-head">
@@ -367,7 +386,7 @@
       </div>
 
       <div class="manual" id="manual">
-        <div class="q">Something else: write your own source and medium</div>
+        <div class="q">Add your own: write a source and medium</div>
         <div class="field">
           <label for="source">Source <span>· who sends the visitor</span></label>
           <input id="source" type="text" autocomplete="off" placeholder="e.g. facebook, partner-blog">
@@ -378,7 +397,24 @@
           <input id="medium" type="text" autocomplete="off" placeholder="e.g. cpc, social, email, referral">
           <div class="hint" id="mediumHint"></div>
         </div>
+        <div class="save-row">
+          <div class="field">
+            <label for="customName">Card name <span>· optional</span></label>
+            <input id="customName" type="text" autocomplete="off" maxlength="40" placeholder="e.g. YouTube description">
+          </div>
+          <button class="btn ghost" id="saveChannel" type="button" disabled>Save as my channel</button>
+          <div class="hint" id="saveHint">Use it again often? Save it, and it becomes a card here with the same spelling every time.</div>
+        </div>
       </div>
+
+      <!-- The person's saved channels, with a way to remove them -->
+      <details class="learn" id="mineBox" hidden>
+        <summary id="mineTitle">Your saved channels</summary>
+        <div class="body">
+          <div id="mineList"></div>
+          <p class="hint">Saved in this browser only. Clearing browser data or switching devices removes them.</p>
+        </div>
+      </details>
 
       <details class="learn">
         <summary>Why not just write “facebook” everywhere?</summary>
@@ -536,6 +572,61 @@
         <button class="btn ghost" data-go="0">Back to start</button>
       </div>
     </section>
+
+    <!-- MY NAMING RULES: set up your own channels once, before building links -->
+    <section class="screen" id="step6">
+      <div class="label">My naming rules</div>
+      <h1>Your channels, <em>spelled the same</em> every time.</h1>
+      <p>Google Analytics treats <span class="code">LinkedIn</span>, <span class="code">linkedin</span> and <span class="code">li</span> as three different sources. Save the spellings you use here, and they appear as cards when you build a link.</p>
+
+      <div class="rules-box">
+        <div class="rules-head" id="rulesTitle">Saved channels</div>
+        <div id="rulesList"></div>
+        <div class="hint" id="rulesEmpty">No saved channels yet. Add your first one below.</div>
+      </div>
+
+      <div class="manual show">
+        <div class="q">Add a channel</div>
+        <div class="field">
+          <label for="ruleName">Card name <span>· how it shows in the wizard</span></label>
+          <input id="ruleName" type="text" autocomplete="off" maxlength="40" placeholder="e.g. YouTube description">
+        </div>
+        <div class="field">
+          <label for="ruleSource">Source <span>· who sends the visitor</span></label>
+          <input id="ruleSource" type="text" autocomplete="off" placeholder="e.g. youtube, partner-blog">
+          <div class="hint" id="ruleSourceHint"></div>
+        </div>
+        <div class="field">
+          <label for="ruleMedium">Medium <span>· what kind of traffic</span></label>
+          <input id="ruleMedium" type="text" autocomplete="off" placeholder="e.g. social, cpc, email, referral">
+          <div class="hint" id="ruleMediumHint"></div>
+        </div>
+        <div class="hint" id="rulePredict"></div>
+        <button class="btn primary solo" id="ruleSave" type="button" disabled>Save channel</button>
+        <div class="copied-msg" id="ruleMsg" aria-live="polite"></div>
+      </div>
+
+      <details class="learn">
+        <summary>Which medium should I use?</summary>
+        <div class="body">
+          <p>Google Analytics only recognises certain words. Use these and your traffic lands in the right channel:</p>
+          <ul>
+            <li><span class="code">social</span> for free posts</li>
+            <li><span class="code">cpc</span> for paid ads</li>
+            <li><span class="code">email</span> for newsletters and emails</li>
+            <li><span class="code">referral</span> for links on other websites</li>
+          </ul>
+          <p>Any other word still works, but the visits show as “Unassigned”.</p>
+        </div>
+      </details>
+
+      <div class="actions stack">
+        <button class="btn primary" id="rulesBuild">Build a link with them
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <button class="btn ghost" data-go="0">Back to start</button>
+      </div>
+    </section>
   </main>
 
   <!-- ============ JavaScript: what the page DOES ============ -->
@@ -563,7 +654,7 @@
         why: "Paid search ads use “cpc”. Note: if auto-tagging is switched on in Google Ads, Analytics may use that data instead, so ask whoever runs your ads." },
       { id: "qr",         label: "QR code on a poster",  source: "poster",     medium: "qr",
         why: "Analytics has no built-in channel for offline traffic, so this will show as “Unassigned”. That’s fine: you can still find it by filtering for source “poster”." },
-      { id: "other",      label: "Something else",       source: "",           medium: "",
+      { id: "other",      label: "Add your own",       source: "",           medium: "",
         why: "" }
     ];
 
@@ -832,14 +923,14 @@
     // Show one step and hide the others
     function goTo(step) {
       currentStep = step;
-      for (let i = 0; i <= 5; i++) {
+      for (let i = 0; i <= 6; i++) {
         $("step" + i).classList.toggle("active", i === step);
       }
-      $("progress").hidden = step === 0 || step === 5;
+      $("progress").hidden = step === 0 || step >= 5;
       $("progress").querySelectorAll("span").forEach(function (bar, i) {
         bar.classList.toggle("on", i < step);
       });
-      $("stepCount").textContent = step === 0 ? "" : step === 5 ? "Link Doctor" : step === 4 ? "Done" : "Step " + step + " of 4";
+      $("stepCount").textContent = step === 0 ? "" : step === 5 ? "Link Doctor" : step === 6 ? "Naming rules" : step === 4 ? "Done" : "Step " + step + " of 4";
       if (step === 4) showResult();
       window.scrollTo(0, 0);
     }
@@ -873,18 +964,193 @@
     });
     $("next1").addEventListener("click", function () { goTo(2); });
 
+    // ---- My channels: the person's own source + medium pairs ----
+    // Saved in this browser (localStorage) under ONE key. Other tools live on the same
+    // website address, so never use localStorage.clear() here.
+    const MINE_KEY = "utmwizard:channels";
+    const MINE_ICON = '<path d="M6 3h12v18l-6-4-6 4Z"/>';
+
+    function loadMine() {
+      try {
+        const list = JSON.parse(localStorage.getItem(MINE_KEY) || "[]");
+        if (!Array.isArray(list)) return [];
+        return list.filter(function (ch) { return ch && ch.id && ch.source && ch.medium; });
+      } catch (error) {
+        return []; // private window or blocked storage: start with none
+      }
+    }
+    function saveMine() {
+      try { localStorage.setItem(MINE_KEY, JSON.stringify(myChannels)); return true; }
+      catch (error) { return false; }
+    }
+    let myChannels = loadMine();
+
+    // A saved channel's "why" text, written from GA4's rules
+    function mineWhy(ch) {
+      const p = predictChannel(ch.source, ch.medium);
+      return "Your saved channel. " +
+        (p.ok ? "Google Analytics will count it as " + p.name + "." : p.note);
+    }
+
+    // Every card, in order: presets, then the person's own, then "Something else"
+    function allChannels() {
+      const presets = CHANNELS.filter(function (ch) { return ch.id !== "other"; });
+      const mine = myChannels.map(function (ch) {
+        return { id: ch.id, label: ch.label, source: ch.source, medium: ch.medium, mine: true, why: mineWhy(ch) };
+      });
+      return presets.concat(mine, CHANNELS.filter(function (ch) { return ch.id === "other"; }));
+    }
+
     // ---- Step 2: Channel cards ----
-    // Build one button per channel from the CHANNELS list
-    CHANNELS.forEach(function (ch) {
-      const btn = document.createElement("button");
-      btn.className = "card" + (ch.id === "other" ? " other" : "");
-      btn.dataset.id = ch.id;
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[ch.id] + '</svg>';
-      btn.appendChild(document.createTextNode(ch.label));
-      btn.setAttribute("aria-pressed", "false");
-      btn.addEventListener("click", function () { toggleChannel(ch); });
-      $("cards").appendChild(btn);
+    // Build one button per channel. Redrawn whenever a channel is saved or removed.
+    function renderCards() {
+      $("cards").innerHTML = "";
+      allChannels().forEach(function (ch) {
+        const btn = document.createElement("button");
+        btn.className = "card" + (ch.id === "other" ? " other" : "") + (ch.mine ? " mine" : "");
+        btn.dataset.id = ch.id;
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ch.mine ? MINE_ICON : ICONS[ch.id]) + '</svg>';
+        btn.appendChild(document.createTextNode(ch.label));
+        if (ch.mine) {
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = "Mine";
+          btn.appendChild(tag);
+        }
+        btn.setAttribute("aria-pressed", "false");
+        btn.addEventListener("click", function () { toggleChannel(ch); });
+        $("cards").appendChild(btn);
+      });
+    }
+
+    // The "Your saved channels" list, with a Remove button for each
+    function renderMine() {
+      $("mineBox").hidden = myChannels.length === 0;
+      $("mineTitle").textContent = "Your saved channels (" + myChannels.length + ")";
+      $("addOwnHint").hidden = myChannels.length > 0; // once they've saved one, the "Mine" badge explains it
+      $("rulesTitle").textContent = "Saved channels (" + myChannels.length + ")";
+      $("rulesEmpty").hidden = myChannels.length > 0;
+      fillMineList($("mineList"));
+      fillMineList($("rulesList"));
+    }
+
+    // One row per saved channel: name, spelling, Remove button
+    function fillMineList(list) {
+      list.innerHTML = "";
+      myChannels.forEach(function (ch) {
+        const row = document.createElement("div");
+        row.className = "mine-row";
+        const name = document.createElement("div");
+        name.className = "mine-name";
+        const label = document.createElement("strong");
+        label.textContent = ch.label;
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = ch.source + " / " + ch.medium;
+        name.append(label, chip);
+        const remove = document.createElement("button");
+        remove.className = "opt";
+        remove.type = "button";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", function () {
+          myChannels = myChannels.filter(function (c) { return c.id !== ch.id; });
+          saveMine();
+          answers.channels = answers.channels.filter(function (id) { return id !== ch.id; });
+          if (lastPicked && lastPicked.id === ch.id) lastPicked = null;
+          renderCards();
+          renderMine();
+          updateStep2();
+        });
+        row.append(name, remove);
+        list.appendChild(row);
+      });
+    }
+
+    // Add a channel to "My naming rules". If the same spelling is already a card, reuse it.
+    function addMine(source, medium, name) {
+      const same = allChannels().find(function (ch) { return ch.source === source && ch.medium === medium; });
+      if (same) return { card: same, same: same, stored: true };
+      const card = { id: "mine-" + Date.now(), label: (name.trim() || source + " / " + medium).slice(0, 40), source: source, medium: medium };
+      myChannels.push(card);
+      return { card: card, same: null, stored: saveMine() };
+    }
+
+    // "Save as my channel" on step 2: turn what was typed under "Add your own" into a card
+    $("saveChannel").addEventListener("click", function () {
+      const source = answers.custom.source;
+      const medium = answers.custom.medium;
+      if (!source || !medium) return;
+      const hint = $("saveHint");
+      const added = addMine(source, medium, $("customName").value);
+      const card = added.card, same = added.same, stored = added.stored;
+
+      // Swap "Something else" for the card
+      answers.channels = answers.channels.filter(function (id) { return id !== "other"; });
+      if (!answers.channels.includes(card.id)) answers.channels.push(card.id);
+      answers.custom = { source: "", medium: "" };
+      ["source", "medium", "customName"].forEach(function (id) { $(id).value = ""; });
+      ["sourceHint", "mediumHint"].forEach(function (id) { $(id).textContent = ""; });
+      lastPicked = allChannels().find(function (ch) { return ch.id === card.id; });
+
+      renderCards();
+      renderMine();
+      updateStep2();
+
+      // The message goes in the box under the cards, since "Something else" is now closed
+      if (same) {
+        $("why").textContent = "That's already the “" + same.label + "” card, so it's ticked for you.";
+      } else if (!stored) {
+        $("why").textContent = "Added for now, but this browser blocks saving (a private window?), so it won't be here next visit.";
+      } else {
+        $("why").textContent = "Saved as a card, with the same spelling every time. " +
+          lastPicked.why.replace("Your saved channel. ", "");
+      }
+      $("why").hidden = false;
+      hint.textContent = "Use it again often? Save it, and it becomes a card here with the same spelling every time.";
     });
+
+    // ---- My naming rules screen ----
+    function updateRuleForm() {
+      const source = clean($("ruleSource").value);
+      const medium = clean($("ruleMedium").value);
+      showSaved($("ruleSource"), $("ruleSourceHint"), source);
+      showSaved($("ruleMedium"), $("ruleMediumHint"), medium);
+      $("ruleSave").disabled = !(source && medium);
+      $("ruleMsg").textContent = "";
+      const box = $("rulePredict");
+      if (source && medium) {
+        // Teach while they type: where will this land in Google Analytics?
+        const p = predictChannel(source, medium);
+        box.textContent = p.ok ? "✓ Google Analytics will count it as " + p.name + "." : "⚠ " + p.note;
+        box.className = "hint " + (p.ok ? "good" : "bad");
+      } else {
+        box.textContent = "";
+        box.className = "hint";
+      }
+    }
+    ["ruleName", "ruleSource", "ruleMedium"].forEach(function (id) {
+      $(id).addEventListener("input", updateRuleForm);
+    });
+
+    $("ruleSave").addEventListener("click", function () {
+      const source = clean($("ruleSource").value);
+      const medium = clean($("ruleMedium").value);
+      if (!source || !medium) return;
+      const added = addMine(source, medium, $("ruleName").value);
+      renderCards();
+      renderMine();
+      updateStep2();
+      ["ruleName", "ruleSource", "ruleMedium"].forEach(function (id) { $(id).value = ""; });
+      updateRuleForm();
+      const msg = $("ruleMsg");
+      msg.classList.toggle("bad", !added.stored);
+      if (added.same) msg.textContent = "Already a card: “" + added.same.label + "”. No copy needed.";
+      else if (!added.stored) msg.textContent = "This browser blocks saving (a private window?), so it will only last until you close the page.";
+      else msg.textContent = "Saved. “" + added.card.label + "” is now a card in the wizard.";
+      $("ruleName").focus();
+    });
+
+    $("rulesBuild").addEventListener("click", function () { goTo(1); $("url").focus(); });
 
     let lastPicked = null; // the card ticked most recently, to show its "why"
 
@@ -905,7 +1171,7 @@
     // Every link the person will get: one per ticked card, plus the custom one
     function selectedLinks() {
       const list = [];
-      CHANNELS.forEach(function (ch) {
+      allChannels().forEach(function (ch) {
         if (ch.id !== "other" && answers.channels.includes(ch.id)) {
           list.push({ label: ch.label, source: ch.source, medium: ch.medium });
         }
@@ -928,7 +1194,7 @@
       $("manual").classList.toggle("show", otherOn);
 
       // The "Wizard filled this" box lists every ticked preset
-      const presets = CHANNELS.filter(function (ch) { return ch.id !== "other" && answers.channels.includes(ch.id); });
+      const presets = allChannels().filter(function (ch) { return ch.id !== "other" && answers.channels.includes(ch.id); });
       $("filled").classList.toggle("show", presets.length > 0);
       const picked = $("picked");
       picked.innerHTML = "";
@@ -957,6 +1223,7 @@
       answers.custom.medium = clean($("medium").value);
       showSaved($("source"), $("sourceHint"), answers.custom.source);
       showSaved($("medium"), $("mediumHint"), answers.custom.medium);
+      $("saveChannel").disabled = !(answers.custom.source && answers.custom.medium);
       updateStep2();
     }
     $("source").addEventListener("input", updateManual);
@@ -1177,7 +1444,8 @@
       answers.custom = { source: "", medium: "" };
       answers.campaign = answers.content = answers.term = "";
       lastPicked = null;
-      ["source", "medium", "campaign", "content", "term"].forEach(function (id) { $(id).value = ""; });
+      ["source", "medium", "customName", "campaign", "content", "term"].forEach(function (id) { $(id).value = ""; });
+      $("saveChannel").disabled = true;
       ["sourceHint", "mediumHint", "campaignHint"].forEach(function (id) { $(id).textContent = ""; });
       updateStep2();
       $("next3").disabled = true;
@@ -1329,6 +1597,8 @@
       copyText(lastFixedUrl.toString(), "Copied! Use this link instead of the old one.", $("doctorCopied"));
     });
 
+    renderCards();
+    renderMine();
     goTo(0);
   </script>
  <footer style="max-width:960px;margin:40px auto 0;padding:16px 16px 32px;border-top:1px solid #c5dcf0;font-size:13px;line-height:1.8;color:#5b6070;">
