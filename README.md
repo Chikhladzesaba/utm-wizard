@@ -42,7 +42,3 @@ UTM Wizard is your guide. You don't need to know the rules: answer a few plain q
 | QR code on a poster | poster | qr | Unassigned |
 
 The channel predictions are a simplified version of GA4's default channel rules.
-
-## Built with
-
-One HTML file with plain HTML, CSS and JavaScript, hosted on GitHub Pages. No frameworks, no server, no database. Everything runs in your browser, and nothing you type is stored or sent anywhere.
